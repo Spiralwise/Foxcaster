@@ -23,11 +23,13 @@ DUMMY_MAP = [
 	[1, 0, 1, 0, 1, 1],
 	[1, 1, 1, 1, 1, 1]
 ]
-BLOCK_SIZE = 64
+BLOCK_SIZE = 4
 SCREEN_DISTANCE = 10
 SCREEN_SIZE = (640, 480)
 RESOLUTION = 480
 FOCAL_LENGTH = 0.3
+MAP_POS = [5, 5]
+MAP_SIZE = 10
 
 COLOR = {
 	'BLACK': (0, 0, 0),
@@ -54,10 +56,37 @@ Player = {
 }
 
 Camera = {
-	'dir': [0.66, 0]
+	'dir': [1.0, 0.0]
 }
 
 Font = pygame.font.SysFont("monospace", 10)
+
+
+def draw_minimap(distance):
+	for y, row in enumerate(DUMMY_MAP):
+		for x, square in enumerate(row):
+			if square:
+				pygame.draw.rect(screen
+				, (200, 0, 0)
+				, (MAP_POS[0]+MAP_SIZE*x
+					, MAP_POS[1]+MAP_SIZE*y
+					, MAP_SIZE, MAP_SIZE))
+	pos_on_map_x = int(MAP_POS[0]+MAP_SIZE*(Player['pos'][0]/BLOCK_SIZE))
+	pos_on_map_y = int(MAP_POS[1]+MAP_SIZE*(Player['pos'][1]/BLOCK_SIZE))
+	pygame.draw.circle(screen
+		, (0, 0, 200)
+		, (pos_on_map_x, pos_on_map_y)
+		, 3)
+	pygame.draw.line(screen
+		, (0, 0, 200)
+		, (pos_on_map_x, pos_on_map_y)
+		, (pos_on_map_x+Player['dir'][0]*6, pos_on_map_y+Player['dir'][1]*6))
+	text = Font.render(str(Player["pos"])
+	                   + ", "
+	                   + str(Player["dir"])
+					   + ", "
+					   + str(distance), 1, (25, 25, 50))
+	screen.blit(text, (10, SCREEN_SIZE[0]-200))
 
 def display_framerate(framerate):
 	text = Font.render(str(framerate), 1, (28, 28, 50))
@@ -81,10 +110,10 @@ def hit_wall(x):
 	hit = False
 
 	blockHit = [int(Player['pos'][0]/BLOCK_SIZE),
-		int(Player['pos'][1]/BLOCK_SIZE)]
+	            int(Player['pos'][1]/BLOCK_SIZE)]
 
 	rayDir = [0.0, 0.0]
-	cameraX = 2 * x / SCREEN_SIZE[0] -1
+	cameraX = 2 * x / (SCREEN_SIZE[0]-1) -1
 	rayDir[0] = Player['dir'][0] + Camera['dir'][0] * cameraX
 	rayDir[1] = Player['dir'][1] + Camera['dir'][1] * cameraX
 
@@ -93,48 +122,45 @@ def hit_wall(x):
 		delta[0] = inf
 	else:
 		rayRatio = (rayDir[1] * rayDir[1]) / (rayDir[0] * rayDir[0])
-		delta[0] = sqrt(1 + rayRatio)
+		delta[0] = sqrt(1 + rayRatio) * BLOCK_SIZE
 	if rayDir[1] == 0.0:
 		delta[1] = inf
 	else:
 		rayRatio = (rayDir[0] * rayDir[0]) / (rayDir[1] * rayDir[1])
-		delta[1] = sqrt(1 + rayRatio)
+		delta[1] = sqrt(1 + rayRatio) * BLOCK_SIZE
 
 	step = [0, 0]
 	sideHitDist = [0.0, 0.0]
-	if Player['dir'][0] > 0:
-		sideHitDist[0] = (blockHit[0]+1)*BLOCK_SIZE - Player['pos'][0]
+	if rayDir[0] > 0:
+		sideHitDist[0] = blockHit[0]+1 - Player['pos'][0]/BLOCK_SIZE
 		sideHitDist[0] *= delta[0]
 		step[0] = 1
 	else:
-		sideHitDist[0] = Player['pos'][0] - blockHit[0]*BLOCK_SIZE
+		sideHitDist[0] = Player['pos'][0]/BLOCK_SIZE - blockHit[0]
 		sideHitDist[0] *= delta[0]
 		step[0] = -1
-	if Player['dir'][1] > 0:
-		sideHitDist[1] = (blockHit[1]+1)*BLOCK_SIZE - Player['pos'][1]
+	if rayDir[1] > 0:
+		sideHitDist[1] = blockHit[1]+1 - Player['pos'][1]/BLOCK_SIZE
 		sideHitDist[1] *= delta[1]
 		step[1] = 1
 	else:
-		sideHitDist[1] = Player['pos'][1] - blockHit[1]*BLOCK_SIZE
+		sideHitDist[1] = Player['pos'][1]/BLOCK_SIZE - blockHit[1]
 		sideHitDist[1] *= delta[1]
 		step[1] = -1
 
 	while not hit:
 		if sideHitDist[0] < sideHitDist[1]:
+			distance = sideHitDist[0]
 			sideHitDist[0] += delta[0]
 			blockHit[0] += step[0]
 			side = 0
 		else:
+			distance = sideHitDist[1]
 			sideHitDist[1] += delta[1]
 			blockHit[1] += step[1]
 			side = 1
-		if (DUMMY_MAP[blockHit[0]][blockHit[1]] > 0):
+		if (DUMMY_MAP[blockHit[1]][blockHit[0]] > 0):
 			hit = True
-
-	if side:
-		distance = sideHitDist[1]
-	else:
-		distance = sideHitDist[0]
 
 	return distance, side
 
@@ -162,8 +188,10 @@ def process_player(delta_time):
 		Player['pos'][1] -= Player['dir'][1] * Player['speed']*delta_time
 	elif Player['state'] is "TURN_L":
 		Player['dir'] = rotate_vector(Player['dir'], -Player['rot_speed'])
+		Camera['dir'] = rotate_vector(Camera['dir'], -Player['rot_speed'])
 	elif Player['state'] is "TURN_R":
 		Player['dir'] = rotate_vector(Player['dir'], Player['rot_speed'])
+		Camera['dir'] = rotate_vector(Camera['dir'], Player['rot_speed'])
 
 # ---- MAIN
 cur_time = perf_counter()
@@ -179,8 +207,9 @@ while running:
 	last_time = cur_time
 	cur_time = perf_counter()
 	frame_duration = cur_time - last_time
-	framerate = 1.0/frame_duration
+	framerate = int(1.0/frame_duration)
 	display_framerate(framerate)
+	#draw_minimap(hit_wall(SCREEN_SIZE[0]/2))
 	pygame.display.flip()
 
 	# ---- Input
@@ -200,4 +229,4 @@ while running:
 				Player['state'] = "TURN_R"
 		elif event.type == KEYUP:
 			Player['state'] = "STAY"
-	process_player(last_time - cur_time)
+	process_player(frame_duration)
