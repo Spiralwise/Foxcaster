@@ -17,10 +17,10 @@ from time import perf_counter
 
 DUMMY_MAP = [
 	[1, 1, 1, 1, 1, 1],
-	[1, 1, 0, 0, 1, 1],
-	[1, 1, 0, 0, 1, 1],
+	[1, 3, 0, 0, 1, 1],
+	[1, 3, 0, 0, 1, 1],
 	[1, 0, 0, 0, 0, 1],
-	[1, 0, 1, 0, 1, 1],
+	[1, 0, 2, 0, 2, 1],
 	[1, 1, 1, 1, 1, 1]
 ]
 BLOCK_SIZE = 2
@@ -34,8 +34,11 @@ MAP_SIZE = 10
 COLOR = {
 	'BLACK': (0, 0, 0),
 	'WHITE': (255, 255, 255),
-	'WALL': (196, 196, 0),
-	'SHADOW_WALL': (96, 96, 0),
+	'WALL': [
+		(196, 196, 0),
+		(196, 32, 32),
+		(32, 32, 196)
+	],
 	'CEIL': (0, 127, 127),
 	'FLOOR': (96, 96, 127)
 }
@@ -63,6 +66,8 @@ Camera = {
 
 Font = pygame.font.SysFont("monospace", 10)
 
+#Texture = pygame.PixelArray(pygame.image.load("texture_test.png"))
+Texture = pygame.image.load("texture_test.png")
 
 def draw_minimap(distance):
 	for y, row in enumerate(DUMMY_MAP):
@@ -105,9 +110,16 @@ def rotate_vector(vec, angle):
 	return [vx, vy]
 
 
-# Cast a ray to the nearest wall and returns the length
-# input x: x-screen pixel
 def hit_wall(x):
+	'''Cast a ray to the nearest wall and returns the length
+
+	   input x: x-screen pixel
+	   output:
+	   - length of the ray in units
+	   - which side has been hit
+	   - wall index
+	   - wall impact position in ratio
+	'''
 
 	hit = False
 
@@ -164,21 +176,45 @@ def hit_wall(x):
 		if (DUMMY_MAP[blockHit[1]][blockHit[0]] > 0):
 			hit = True
 
-	return distance, side
+	distanceXY = (blockHit[side]-((step[side]-1)/2))*BLOCK_SIZE - Player['pos'][side]
+	otherSide = 0 if side else 1
+	wallHit = sqrt(distance*distance - distanceXY*distanceXY) * step[otherSide]
+	wallHit += Player['pos'][otherSide] - blockHit[otherSide]*BLOCK_SIZE
+	wallHit /= BLOCK_SIZE
 
+	return distance, side, DUMMY_MAP[blockHit[1]][blockHit[0]], wallHit
+	#FIXME Make it RayHit object
 
-# input x: vertical strip on screen
-# input distance: distance to the nearest wall through the vertical strip
-def draw_wall(x, distance):
-	perceivedHeight = int(WALL_HEIGHT/distance[0])
-	if distance[1]:
-		color = COLOR['SHADOW_WALL']
+def draw_wall(x, rayhit):
+	'''Draw a wall according to the distance to the player.
+	   If the wall has a texture, it will be textured.
+
+	   input x: vertical strip on screen
+	   input rayhit
+	'''
+
+	perceivedHeight = int(WALL_HEIGHT/rayhit[0])
+	if rayhit[2] == 3:
+		texX = int(rayhit[3] * Texture.get_width())
+
+		screen.blit(
+		    pygame.transform.scale(Texture,
+		                           (Texture.get_width(), perceivedHeight*2)),
+		    (x, -perceivedHeight+SCREEN_SIZE[1]/2),
+			(texX, 0, 1, perceivedHeight*2))
+		#screen_array = pygame.PixelArray(screen)
+		#for wallY in range(perceivedHeight*2):
+		#	texY = int(wallY/(perceivedHeight*2) * (Texture.shape[1]-1))
+		#	wallYCentered = int(wallY + SCREEN_SIZE[1]/2 - perceivedHeight)
+		#	screen_array[x, wallYCentered] = Texture[texX, texY]
 	else:
-		color = COLOR['WALL']
-	pygame.draw.line(screen,
-		color,
-		(x, (perceivedHeight + SCREEN_SIZE[1]/2)),
-		(x, (-perceivedHeight + SCREEN_SIZE[1]/2)))
+		color = COLOR['WALL'][rayhit[2]-1]
+		if rayhit[1]:
+			color = list(map(lambda x: x/2, color)) #NOTE Maybe use bitshifting?
+		pygame.draw.line(screen,
+			color,
+			(x, (perceivedHeight + SCREEN_SIZE[1]/2)),
+			(x, (-perceivedHeight + SCREEN_SIZE[1]/2)))
 
 
 def process_player(delta_time):
