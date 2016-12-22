@@ -55,7 +55,7 @@ Player = {
 	'pos': [BLOCK_SIZE*3, BLOCK_SIZE*3],
 	'dir': [0.0, -1.0],
 	'speed': 1.0,
-	'rot_speed': 0.01,
+	'rot_speed': 1.2,
 	'move_state': 0,
 	'turn_state': 0
 }
@@ -196,17 +196,11 @@ def draw_wall(x, rayhit):
 	perceivedHeight = int(WALL_HEIGHT/rayhit[0])
 	if rayhit[2] == 3:
 		texX = int(rayhit[3] * Texture.get_width())
-
 		screen.blit(
 		    pygame.transform.scale(Texture,
 		                           (Texture.get_width(), perceivedHeight*2)),
 		    (x, -perceivedHeight+SCREEN_SIZE[1]/2),
 			(texX, 0, 1, perceivedHeight*2))
-		#screen_array = pygame.PixelArray(screen)
-		#for wallY in range(perceivedHeight*2):
-		#	texY = int(wallY/(perceivedHeight*2) * (Texture.shape[1]-1))
-		#	wallYCentered = int(wallY + SCREEN_SIZE[1]/2 - perceivedHeight)
-		#	screen_array[x, wallYCentered] = Texture[texX, texY]
 	else:
 		color = COLOR['WALL'][rayhit[2]-1]
 		if rayhit[1]:
@@ -225,11 +219,11 @@ def process_player(delta_time):
 		Player['pos'][0] -= Player['dir'][0] * Player['speed']*delta_time
 		Player['pos'][1] -= Player['dir'][1] * Player['speed']*delta_time
 	if Player['turn_state'] == 1:
-		Player['dir'] = rotate_vector(Player['dir'], -Player['rot_speed'])
-		Camera['dir'] = rotate_vector(Camera['dir'], -Player['rot_speed'])
+		Player['dir'] = rotate_vector(Player['dir'], -Player['rot_speed']*delta_time)
+		Camera['dir'] = rotate_vector(Camera['dir'], -Player['rot_speed']*delta_time)
 	elif Player['turn_state'] == -1:
-		Player['dir'] = rotate_vector(Player['dir'], Player['rot_speed'])
-		Camera['dir'] = rotate_vector(Camera['dir'], Player['rot_speed'])
+		Player['dir'] = rotate_vector(Player['dir'], Player['rot_speed']*delta_time)
+		Camera['dir'] = rotate_vector(Camera['dir'], Player['rot_speed']*delta_time)
 
 # ---- MAIN
 cur_time = perf_counter()
