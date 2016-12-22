@@ -39,7 +39,7 @@ COLOR = {
 	'RED': (196, 32, 32),
 	'BLUE': (32, 32, 196),
 	'CEIL': (0, 127, 127),
-	'FLOOR': (96, 96, 127)
+	'FLOOR': (96, 96, 127),
 }
 
 WALL_HEIGHT = SCREEN_SIZE[1]/3
@@ -73,15 +73,25 @@ TEXTURE_SIZE = 64
 if TEXTURES.get_width() % TEXTURE_SIZE or TEXTURES.get_height() % TEXTURE_SIZE:
 	print("Textures loading error.")
 	sys.exit(-1)
-Textures = []
+Textures = [[], []]
 num_textures = int(TEXTURES.get_width() / TEXTURE_SIZE)
 for t in range(num_textures):
 	texture_buffer = pygame.Surface((64, 64), pygame.HWSURFACE)
 	texture_buffer.blit(TEXTURES,
 	                    (0, 0),
 						(t*TEXTURE_SIZE, 0, 64, 64))
-	Textures.append(texture_buffer)
-print(len(Textures), "textures loaded.")
+	Textures[0].append(texture_buffer)
+	texture_buffer = pygame.Surface((64, 64), pygame.HWSURFACE)
+	texture_buffer.blit(TEXTURES,
+	                    (0, 0),
+						(t*TEXTURE_SIZE, 0, 64, 64))
+	for y in range(texture_buffer.get_height()):
+		for x in range(texture_buffer.get_width()):
+			texture_buffer.set_at((x, y),
+				                  texture_buffer.get_at((x, y)) \
+								  // pygame.Color(2, 2, 2))
+	Textures[1].append(texture_buffer)
+print(len(Textures[0]), "textures loaded.")
 
 def draw_minimap(distance):
 	for y, row in enumerate(DUMMY_MAP):
@@ -216,7 +226,7 @@ def draw_wall(x, rayhit):
 		txt_index = rayhit[2] - 2
 		texX = int(rayhit[3] * TEXTURE_SIZE)
 		screen.blit(
-		    pygame.transform.scale(Textures[txt_index],
+		    pygame.transform.scale(Textures[rayhit[1]][txt_index],
 		                           (TEXTURE_SIZE, perceivedHeight*2)),
 		    (x, -perceivedHeight+SCREEN_SIZE[1]/2),
 			(texX, 0, 1, perceivedHeight*2))
