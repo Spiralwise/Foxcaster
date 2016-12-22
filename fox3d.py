@@ -23,7 +23,7 @@ DUMMY_MAP = [
 	[1, 0, 1, 0, 1, 1],
 	[1, 1, 1, 1, 1, 1]
 ]
-BLOCK_SIZE = 4
+BLOCK_SIZE = 2
 SCREEN_DISTANCE = 10
 SCREEN_SIZE = (640, 480)
 RESOLUTION = 480
@@ -39,6 +39,7 @@ COLOR = {
 	'CEIL': (0, 127, 127),
 	'FLOOR': (96, 96, 127)
 }
+
 WALL_HEIGHT = SCREEN_SIZE[1]/3
 WALL_HEIGHT_DEMI = WALL_HEIGHT/2
 HORIZONT_LINE = SCREEN_SIZE[1]/2
@@ -52,7 +53,8 @@ Player = {
 	'dir': [0.0, -1.0],
 	'speed': 1.0,
 	'rot_speed': 0.01,
-	'state': "STAY"
+	'move_state': 0,
+	'turn_state': 0
 }
 
 Camera = {
@@ -180,16 +182,16 @@ def draw_wall(x, distance):
 
 
 def process_player(delta_time):
-	if Player['state'] is "FWD":
+	if Player['move_state'] == 1:
 		Player['pos'][0] += Player['dir'][0] * Player['speed']*delta_time
 		Player['pos'][1] += Player['dir'][1] * Player['speed']*delta_time
-	elif Player['state'] is "BKWD":
+	elif Player['move_state'] == -1:
 		Player['pos'][0] -= Player['dir'][0] * Player['speed']*delta_time
 		Player['pos'][1] -= Player['dir'][1] * Player['speed']*delta_time
-	elif Player['state'] is "TURN_L":
+	if Player['turn_state'] == 1:
 		Player['dir'] = rotate_vector(Player['dir'], -Player['rot_speed'])
 		Camera['dir'] = rotate_vector(Camera['dir'], -Player['rot_speed'])
-	elif Player['state'] is "TURN_R":
+	elif Player['turn_state'] == -1:
 		Player['dir'] = rotate_vector(Player['dir'], Player['rot_speed'])
 		Camera['dir'] = rotate_vector(Camera['dir'], Player['rot_speed'])
 
@@ -220,13 +222,16 @@ while running:
 			if event.key == K_ESCAPE:
 				running = False
 			elif event.key == K_w:
-				Player['state'] = "FWD"
+				Player['move_state'] = 1
 			elif event.key == K_s:
-				Player['state'] = "BKWD"
+				Player['move_state'] = -1
 			elif event.key == K_a:
-				Player['state'] = "TURN_L"
+				Player['turn_state'] = 1
 			elif event.key == K_d:
-				Player['state'] = "TURN_R"
+				Player['turn_state'] = -1
 		elif event.type == KEYUP:
-			Player['state'] = "STAY"
+			if event.key == K_w or event.key == K_s:
+				Player['move_state'] = 0
+			elif event.key == K_a or event.key == K_d:
+				Player['turn_state'] = 0
 	process_player(frame_duration)
