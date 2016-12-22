@@ -10,18 +10,19 @@
 # TODO : Find a vector library for a more efficient vector manipulation
 ######################
 
+import sys
 import pygame
 from pygame.locals import *
 from math import *
 from time import perf_counter
 
 DUMMY_MAP = [
-	[1, 1, 1, 1, 1, 1],
-	[1, 3, 0, 0, 1, 1],
-	[1, 3, 0, 0, 1, 1],
+	[1, 1, 2, 1, 1, 1],
+	[1, 3, 0, 0, 5, 1],
+	[1, 3, 0, 0, 5, 1],
 	[1, 0, 0, 0, 0, 1],
 	[1, 0, 2, 0, 2, 1],
-	[1, 1, 1, 1, 1, 1]
+	[1, 1, 1, 6, 1, 1]
 ]
 BLOCK_SIZE = 2
 SCREEN_DISTANCE = 10
@@ -34,11 +35,9 @@ MAP_SIZE = 10
 COLOR = {
 	'BLACK': (0, 0, 0),
 	'WHITE': (255, 255, 255),
-	'WALL': [
-		(196, 196, 0),
-		(196, 32, 32),
-		(32, 32, 196)
-	],
+	'YELLOW': (196, 196, 0),
+	'RED': (196, 32, 32),
+	'BLUE': (32, 32, 196),
 	'CEIL': (0, 127, 127),
 	'FLOOR': (96, 96, 127)
 }
@@ -51,10 +50,12 @@ pygame.init()
 screen = pygame.display.set_mode(SCREEN_SIZE)
 pygame.display.set_caption("Foxenstein 3D")
 
+print("==== Foxcaster Demo alpha ====")
+
 Player = {
 	'pos': [BLOCK_SIZE*3, BLOCK_SIZE*3],
 	'dir': [0.0, -1.0],
-	'speed': 1.0,
+	'speed': 1.4,
 	'rot_speed': 1.2,
 	'move_state': 0,
 	'turn_state': 0
@@ -66,8 +67,21 @@ Camera = {
 
 Font = pygame.font.SysFont("monospace", 10)
 
-#Texture = pygame.PixelArray(pygame.image.load("texture_test.png"))
-Texture = pygame.image.load("texture_test.png")
+print("Loading textures...")
+TEXTURES = pygame.image.load("wolftextures.png")
+TEXTURE_SIZE = 64
+if TEXTURES.get_width() % TEXTURE_SIZE or TEXTURES.get_height() % TEXTURE_SIZE:
+	print("Textures loading error.")
+	sys.exit(-1)
+Textures = []
+num_textures = int(TEXTURES.get_width() / TEXTURE_SIZE)
+for t in range(num_textures):
+	texture_buffer = pygame.Surface((64, 64), pygame.HWSURFACE)
+	texture_buffer.blit(TEXTURES,
+	                    (0, 0),
+						(t*TEXTURE_SIZE, 0, 64, 64))
+	Textures.append(texture_buffer)
+print(len(Textures), "textures loaded.")
 
 def draw_minimap(distance):
 	for y, row in enumerate(DUMMY_MAP):
@@ -176,14 +190,18 @@ def hit_wall(x):
 		if (DUMMY_MAP[blockHit[1]][blockHit[0]] > 0):
 			hit = True
 
-	distanceXY = (blockHit[side]-((step[side]-1)/2))*BLOCK_SIZE - Player['pos'][side]
+	distanceXY = (blockHit[side]-((step[side]-1)/2))*BLOCK_SIZE \
+	             - Player['pos'][side]
 	otherSide = 0 if side else 1
 	wallHit = sqrt(distance*distance - distanceXY*distanceXY) * step[otherSide]
 	wallHit += Player['pos'][otherSide] - blockHit[otherSide]*BLOCK_SIZE
 	wallHit /= BLOCK_SIZE
+	if rayDir[0] < 0 and side == 0 or rayDir[1] > 0 and side == 1:
+		wallHit = 1 - wallHit
 
 	return distance, side, DUMMY_MAP[blockHit[1]][blockHit[0]], wallHit
 	#FIXME Make it RayHit object
+
 
 def draw_wall(x, rayhit):
 	'''Draw a wall according to the distance to the player.
@@ -194,15 +212,16 @@ def draw_wall(x, rayhit):
 	'''
 
 	perceivedHeight = int(WALL_HEIGHT/rayhit[0])
-	if rayhit[2] == 3:
-		texX = int(rayhit[3] * Texture.get_width())
+	if rayhit[2] > 1:
+		txt_index = rayhit[2] - 2
+		texX = int(rayhit[3] * TEXTURE_SIZE)
 		screen.blit(
-		    pygame.transform.scale(Texture,
-		                           (Texture.get_width(), perceivedHeight*2)),
+		    pygame.transform.scale(Textures[txt_index],
+		                           (TEXTURE_SIZE, perceivedHeight*2)),
 		    (x, -perceivedHeight+SCREEN_SIZE[1]/2),
 			(texX, 0, 1, perceivedHeight*2))
 	else:
-		color = COLOR['WALL'][rayhit[2]-1]
+		color = COLOR['YELLOW']
 		if rayhit[1]:
 			color = list(map(lambda x: x/2, color)) #NOTE Maybe use bitshifting?
 		pygame.draw.line(screen,
