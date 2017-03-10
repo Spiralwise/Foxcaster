@@ -25,7 +25,7 @@ DUMMY_MAP = [
 	[1, 1, 1, 6, 1, 1]
 ]
 BLOCK_SIZE = 2
-SCREEN_DISTANCE = 10
+SCREEN_DISTANCE = 2
 SCREEN_SIZE = (640, 480)
 RESOLUTION = 480
 FOCAL_LENGTH = 0.3
@@ -42,7 +42,7 @@ COLOR = {
 	'FLOOR': (96, 96, 127),
 }
 
-WALL_HEIGHT = SCREEN_SIZE[1]/3
+WALL_HEIGHT = SCREEN_SIZE[1]/2
 WALL_HEIGHT_DEMI = WALL_HEIGHT/2
 HORIZONT_LINE = SCREEN_SIZE[1]/2
 
@@ -62,7 +62,8 @@ Player = {
 }
 
 Camera = {
-	'dir': [1.0, 0.0]
+	'dir': [1.0, 0.0],
+	'fisheye': False
 }
 
 Font = pygame.font.SysFont("monospace", 10)
@@ -209,6 +210,13 @@ def hit_wall(x):
 	if rayDir[0] < 0 and side == 0 or rayDir[1] > 0 and side == 1:
 		wallHit = 1 - wallHit
 
+	if not Camera['fisheye']:
+		rayDist = sqrt(rayDir[0]*rayDir[0] + rayDir[1]*rayDir[1])
+		distPlaneToHit = distance
+		playerDist = sqrt(Player['dir'][0]*Player['dir'][0] \
+		                  + Player['dir'][1]*Player['dir'][1])
+		distance = playerDist * distPlaneToHit / rayDist
+
 	return distance, side, DUMMY_MAP[blockHit[1]][blockHit[0]], wallHit
 	#FIXME Make it RayHit object
 
@@ -288,6 +296,8 @@ while running:
 				Player['turn_state'] = 1
 			elif event.key == K_d:
 				Player['turn_state'] = -1
+			elif event.key == K_f:
+				Camera['fisheye'] = not Camera['fisheye']
 		elif event.type == KEYUP:
 			if event.key == K_w or event.key == K_s:
 				Player['move_state'] = 0
